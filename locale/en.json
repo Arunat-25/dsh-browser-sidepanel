@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Browser Panel",
+    "description": "A right-sidebar browser that streams a real Chrome page and turns clicked elements into conversation context."
+  }
+}

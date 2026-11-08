@@ -1,0 +1,11 @@
+# Run artifacts (screenshots, frames, reports of one run)
+tools/out/
+tools/e2e/out/
+probe/out/
+
+# Dependencies
+node_modules/
+
+# Logs / editor noise
+*.log
+.DS_Store

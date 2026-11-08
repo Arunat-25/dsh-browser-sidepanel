@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Browser panel">
+  <defs>
+    <linearGradient id="bp-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f6fd0"/>
+      <stop offset="1" stop-color="#1d4f9c"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="10" width="52" height="44" rx="8" fill="url(#bp-sky)"/>
+  <rect x="6" y="10" width="52" height="11" rx="8" fill="#ffffff" fill-opacity="0.16"/>
+  <circle cx="12.5" cy="15.5" r="1.8" fill="#ffffff" fill-opacity="0.85"/>
+  <circle cx="18" cy="15.5" r="1.8" fill="#ffffff" fill-opacity="0.6"/>
+  <circle cx="23.5" cy="15.5" r="1.8" fill="#ffffff" fill-opacity="0.4"/>
+  <rect x="10" y="25" width="24" height="3.6" rx="1.8" fill="#ffffff" fill-opacity="0.75"/>
+  <rect x="10" y="32" width="33" height="3.6" rx="1.8" fill="#ffffff" fill-opacity="0.45"/>
+  <rect x="10" y="39" width="18" height="3.6" rx="1.8" fill="#ffffff" fill-opacity="0.35"/>
+  <path d="M36 46.5 33.2 33.9l17.6 6.3-7.1 2.9-2.8 7.1z" fill="#ffffff" stroke="#1d4f9c" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M43.8 43.3 49 48.6" stroke="#1d4f9c" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

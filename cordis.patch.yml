@@ -1,0 +1,8 @@
+# Right-sidebar browser panel: one Host row owns a CDP Chrome per Session and
+# serves the panel transport; the Client half renders the Sidebar tab.
+- insert:
+    - id: browser-panel
+      name: 'dsh-browser-sidepanel'
+      config:
+        chromeExecutable: /usr/bin/google-chrome
+        headless: true
