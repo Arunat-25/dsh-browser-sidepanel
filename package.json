@@ -4,6 +4,15 @@
   "type": "module",
   "description": "A real browser for the DeepSeek Harness Web GUI right sidebar: CDP-driven Chrome, not an iframe, with element picking into context and 7 agent tools. Unlike the Browser that ships with DSH — a sandboxed iframe that is off by default in Web profiles — this one is built for the Web UI.",
   "license": "MIT",
+  "author": "Arunat-25",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Arunat-25/dsh-browser-sidepanel.git"
+  },
+  "homepage": "https://github.com/Arunat-25/dsh-browser-sidepanel#readme",
+  "bugs": {
+    "url": "https://github.com/Arunat-25/dsh-browser-sidepanel/issues"
+  },
   "keywords": [
     "deepseek-harness",
     "dsh",
