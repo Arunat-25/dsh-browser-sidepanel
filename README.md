@@ -4,8 +4,30 @@ A right-Sidebar **Browser** tab for the DSH Web GUI that streams a real Chrome p
 CDP, forwards mouse/keyboard input, and turns a clicked page element into conversation
 context — the "pick element into context" flow familiar from Cursor/opencode.
 
+**This is the browser for the Web UI itself.** It is built for the DSH **Web** profile: the tab
+renders in the right Sidebar of `dsh web`, and the page behind it is a real Chrome running on the
+host, driven over CDP. That is a different thing from the `Browser` that ships with DSH
+(`@deepseek-ai/dsh-client-ui-sidebar-browser`): in a Web profile that one is a sandboxed **iframe**
+(an Electron `<webview>` on Desktop), it is switched **off by default** in Web profiles, and it is a
+viewer — no CDP, no agent tools, no element picking. This bundle exists so the Web UI gets a real
+browser, not a frame.
+
 Everything ships as one installable DSH plugin bundle (`dsh-browser-sidepanel`): a Host half that
 owns Chrome and the transport, and a Client half that renders the Sidebar tab.
+
+## How it differs from the Browser that ships with DSH
+
+| | this bundle (`dsh-browser-sidepanel`) | shipped `ui-sidebar-browser` |
+|---|---|---|
+| Carrier | real Chrome on the host, driven over CDP | Web: sandboxed `<iframe>`; Desktop: Electron `<webview>` |
+| In the Web GUI | the target — a full browser in the right Sidebar | off by default in Web profiles |
+| Sites that refuse framing | work: `X-Frame-Options` / `frame-ancestors` never apply | need the external-browser action |
+| Logins, 2FA, CAPTCHA, QR codes | work: a real top-level Chrome page with its own profile | only while the site allows framing |
+| Element picking into the conversation | yes — selector, role, accessible name, box, ancestry, `outerHTML` | no |
+| Agent tools | 7 (`browser_navigate`, `browser_click`, …) driving the same page you see | none |
+| Page history | Chrome's own | application-managed; History API and fragment changes can be invisible |
+| Isolation | one lazily-launched Chrome per Session, temporary profile | iframe inside the app page, sandboxed |
+| Install | one bundle row in the Web profile | ships with DSH |
 
 ## What it does
 
@@ -18,7 +40,8 @@ owns Chrome and the transport, and a Client half that renders the Sidebar tab.
 - **Full interaction** — pointer, wheel, and keyboard (printable text via `Input.insertText`,
   control keys via `Input.dispatchKeyEvent`), address bar with navigation, back/forward/reload,
   multiple tabs, viewport resize. `--headless=new` by default; set `headless: false` to watch
-  the real window.
+  the real window. The address bar is usable during a cold start: a URL submitted while Chrome is
+  still launching is held and navigated as soon as the first page exists.
 - **Pointer feedback** — moving the mouse in the panel shows a pointer dot, draws an animated
   hover outline around the element under the cursor with its selector caption, and mirrors the
   page's own CSS cursor (`pointer`, `text`, `grab`, …), so it is obvious when the page reacts.
@@ -145,8 +168,10 @@ GET /state           ◀── JSON ──────  /browser-panel/state
   mention, shutdown/cleanup. The two SKIPs are the agent-tool call (needs a live LLM turn; the
   shared service method is covered by the HTTP pick path) and forced-SSE-reconnect.
   See `tools/e2e/REPORT.md`.
-- `node tools/lead-hover-check.mjs` — 9/9: panel navigation, hover outline + pointer dot,
-  cursor mirroring, pick chip, and the `@browser` mention landing in the composer.
+- `node tools/lead-hover-check.mjs` — 10/10: panel opens (it picks the right guide card even when
+  the shipped `Browser` registers the same tab kind), the address form is visible, the panel
+  navigates, hover outline + pointer dot, cursor mirroring, pick chip, and the `@browser` mention
+  landing in the composer.
 
 ## Limitations and notes
 

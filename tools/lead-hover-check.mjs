@@ -66,13 +66,37 @@ try {
     await sleep(800)
   }
   await page.waitFor(`document.querySelector('[data-sidebar-right-guide-entry="browser"]') !== null`, { timeout: 10_000, label: 'browser guide card' })
-  const card = await page.rectOf('[data-sidebar-right-guide-entry="browser"]')
-  await page.mouseClick(card.cx, card.cy)
-  check('panel-opened', await page.waitFor(`document.querySelector('[data-browser-panel]') !== null`, { timeout: 10_000, label: 'panel root' }).then(() => true).catch(() => false))
 
-  // Point the panel at the fixture through its own address form.
+  // The guide-card marker carries the tab KIND, and the Browser that ships with
+  // DSH registers the same kind, so click each candidate until our own root mounts.
+  const cardCount = await page.evaluate(`document.querySelectorAll('[data-sidebar-right-guide-entry="browser"]').length`)
+  let panelOpened = false
+  for (let index = 0; index < cardCount && !panelOpened; index += 1) {
+    const card = await page.evaluate(`(() => {
+      const candidate = document.querySelectorAll('[data-sidebar-right-guide-entry="browser"]')[${index}]
+      if (!candidate) return null
+      candidate.scrollIntoView({ block: 'center', behavior: 'instant' })
+      const r = candidate.getBoundingClientRect()
+      if (r.width === 0 || r.height === 0) return null
+      return { cx: Math.round(r.x + r.width / 2), cy: Math.round(r.y + r.height / 2) }
+    })()`)
+    if (card === null) continue
+    await page.mouseClick(card.cx, card.cy)
+    panelOpened = await page.waitFor(`document.querySelector('[data-browser-panel]') !== null`, { timeout: 4_000, label: 'panel root' })
+      .then(() => true).catch(() => false)
+  }
+  check('panel-opened', panelOpened, `${cardCount} guide card(s) of kind "browser"`)
+
+  // Point the panel at the fixture through its own address form. The right column
+  // animates open, so the form can still be at zero size just after the root mounts
+  // (the same flake verify.mjs fixed as D9): poll instead of skipping the step.
   const addressSelector = '[data-dockkit-pane] input[data-browser-panel-address]'
-  const address = await page.rectOf(addressSelector)
+  let address = null
+  for (let attempt = 0; attempt < 40 && address === null; attempt += 1) {
+    address = await page.rectOf(addressSelector)
+    if (address === null) await sleep(250)
+  }
+  check('address-form-visible', address !== null, address)
   if (address !== null) {
     await page.mouseClick(address.cx, address.cy)
     await page.evaluate(`(() => {
@@ -86,13 +110,13 @@ try {
     })()`)
   }
   const onFixture = await page.waitFor(`(() => {
-    const pane = document.querySelector('[data-dockkit-pane]')
-    return pane !== null && (pane.innerText || '').includes(${JSON.stringify(`:${fixture.port}`)})
+    const pane = [...document.querySelectorAll('[data-dockkit-pane]')].find((p) => p.querySelector('[data-browser-panel]') !== null)
+    return pane !== undefined && (pane.innerText || '').includes(${JSON.stringify(`:${fixture.port}`)})
   })()`, { timeout: 12_000, label: 'fixture page in panel' }).then(() => true).catch(() => false)
   check('panel-navigates-to-fixture', onFixture, fixture.url)
 
   const layout = await fixture.waitFor((entry) => entry.type === 'ready' || entry.type === 'layout', 8_000).catch(() => null)
-  const canvas = await page.rectOf('[data-dockkit-pane] canvas')
+  const canvas = await page.rectOf('[data-dockkit-pane]:has([data-browser-panel]) canvas')
   check('canvas-visible', canvas !== null, canvas)
   check('fixture-layout-available', Boolean(layout && layout.saveRect && layout.viewport),
     layout ? { type: layout.type, saveRect: layout.saveRect, viewport: layout.viewport } : { events: fixture.events().map((entry) => entry.type).slice(0, 8) })

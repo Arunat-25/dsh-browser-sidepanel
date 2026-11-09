@@ -682,6 +682,7 @@ window.__ModuleLoader__.load({
           moveTimer: 0,
           movePoint: null,
           pickBusy: false,
+          pendingUrl: null,
         }
 
         function isAlive() {
@@ -713,6 +714,24 @@ window.__ModuleLoader__.load({
             setViewport({ width: row.viewport.width, height: row.viewport.height })
           }
           publishTitle(storeKey, { title: row.title, url: row.url })
+        }
+
+        /**
+         * Run a URL the user submitted before Chrome had a page. The address form is
+         * live during "Starting Chrome…", so dropping that submission would lose it
+         * for the whole cold start (up to `launchTimeoutMs`).
+         */
+        function flushPendingUrl() {
+          if (!isAlive() || !rt.chromeTabId || !rt.pendingUrl) return
+          const url = rt.pendingUrl
+          rt.pendingUrl = null
+          postAction(session, rt.chromeTabId, 'navigate', { url: url }, controller.signal)
+            .then(function (result) {
+              if (isAlive() && result && result.tab) applyTabRow(result.tab)
+            }, function (error) {
+              if (isAbortError(error) || !isAlive()) return
+              showError(error, 'error.navigate')
+            })
         }
 
         function applyStateDoc(doc) {
@@ -769,6 +788,7 @@ window.__ModuleLoader__.load({
               tabMap.set(storeKey, row.tabId)
             }
             applyTabRow(row)
+            flushPendingUrl()
           }
         }
 
@@ -1339,6 +1359,7 @@ window.__ModuleLoader__.load({
           rt.chromeTabId = row.tabId
           tabMap.set(storeKey, row.tabId)
           applyTabRow(row)
+          flushPendingUrl()
         }
 
         /** Adopt a row returned by a (possibly shared) openTab flight into this effect. */
@@ -1349,6 +1370,7 @@ window.__ModuleLoader__.load({
             tabMap.set(storeKey, row.tabId)
             applyTabRow(row)
           }
+          flushPendingUrl()
           return row
         }
 
@@ -1520,8 +1542,15 @@ window.__ModuleLoader__.load({
         const engine = {
           navigate: function (raw) {
             const url = normalizeUrl(raw)
-            if (!url || !rt.chromeTabId) return
+            if (!url) return
             clearNotice()
+            if (!rt.chromeTabId) {
+              // Chrome may still be cold-starting: the address form is live before
+              // the first page exists, so hold the URL until there is a tab to drive.
+              rt.pendingUrl = url
+              return
+            }
+            rt.pendingUrl = null
             postAction(session, rt.chromeTabId, 'navigate', { url: url }, controller.signal)
               .then(function (result) {
                 if (!isAlive()) return

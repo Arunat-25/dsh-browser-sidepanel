@@ -232,3 +232,51 @@ Two features were added after the first green run, and the harness grew three ch
 the guide-card click could land while it was still moving; the click now waits for the slide and
 retries once, and it asserts the panel root instead of a pane-text heuristic. This was a harness
 flake, not a client regression — the same flow with explicit waits was green throughout.
+
+## Round 3 — bundle rename, and a real client bug behind a red check (2026-11-09)
+
+Run against DSH `0.2.2-alpha.2`, after the bundle was renamed to the publishable
+`dsh-browser-sidepanel` and reinstalled into the `web` profile.
+
+```
+Run 2026-11-09T05:09:33Z (= 12:09:33 Asia/Tomsk)   duration 24.8 s   exit 0
+29 PASS / 0 FAIL / 2 SKIP of 31 checks
+origin  http://127.0.0.1:3080
+```
+
+The same two documented SKIPs (C24 forced-SSE-reconnect, C25 agent-tool invocation); C01–C31 are
+otherwise green, and `tools/lead-hover-check.mjs` is now **10/10** (it gained
+`address-form-visible`), while `tools/host-selftest.mjs` is 34/34 and `tools/lead-integration.mjs`
+17/17 (twice in a row).
+
+**Two findings behind the red checks — the harness defect first, the client bug underneath it.**
+
+*D10 — the guide-card marker is the tab KIND, not the plugin.* `GuideBody.tsx` renders
+`data-sidebar-right-guide-entry={entry.kind}`, and the Browser shipped with DSH registers the same
+`kind: 'browser'`. A single click on `[data-sidebar-right-guide-entry="browser"]` is therefore
+ambiguous the moment the shipped Browser is enabled in a Web profile. `lead-hover-check.mjs` now
+clicks each candidate card in turn until `[data-browser-panel]` mounts, and asserts the address form
+instead of silently skipping navigation when its rect is still zero-sized during the slide-open
+(the same class of flake as D9, which had only been fixed in `verify.mjs`).
+
+*Client bug it was hiding.* With that step no longer skipped, `panel-navigates-to-fixture` still
+failed: `engine.navigate` returned early on `!rt.chromeTabId` and dropped the URL, while the address
+form is live during "Starting Chrome…". A URL typed during a cold start (up to `launchTimeoutMs`,
+25 s by default) was lost silently, and the status line settled back to `about:blank`. Evidence, both
+against the same build:
+
+| submit timing | status before submit | status after | fixture events |
+|---|---|---|---|
+| immediately after the panel root mounts | `Starting Chrome… · No page` | `Connected · about:blank` | `[]` — the URL was dropped |
+| after the panel reports `Connected` | `Connected · about:blank` | `Connected · http://127.0.0.1:<port>/` | `['ready']` |
+
+Fix: `engine.navigate` parks the URL in `rt.pendingUrl` when there is no tab yet, and
+`flushPendingUrl()` navigates as soon as the effect adopts a tab id (`applyStateDoc`, `adoptRow`,
+`claimRow`). `lead-hover-check.mjs` drives the form as early as it ever did and is green, which is
+the regression test for it.
+
+**Also in this round:** the bundle dropped `private`, gained `license`/`keywords`/`engines`/`files`
+entries, an MIT `LICENSE` and a `.gitignore`; the test tools no longer hard-code this machine's paths
+(`DSH_SESSIONS_ROOT`, `DSH_TEST_PROJECT`); and the README now leads with what this bundle is for —
+a real browser in the **Web** UI, as opposed to the sandboxed iframe that ships with DSH and is off
+by default in Web profiles.
